@@ -1,4 +1,4 @@
-![zgui Jaguar Mascot](assets/zgui-primary.png)
+![zgui Jaguar Mascot](assets/icons/zgui-primary.png)
 
 # 🐆 zgui — The Agile Zig GUI Framework
 
