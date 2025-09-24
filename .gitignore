@@ -2,3 +2,7 @@
 /zig-out/
 *.o
 *.exe
+.zig-cache/
+archive/
+CLAUDE.md
+TODO.md
