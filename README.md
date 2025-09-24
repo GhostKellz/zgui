@@ -1,4 +1,6 @@
-![zgui Jaguar Mascot](assets/icons/zgui-primary.png)
+<div align="center">
+<img src="assets/icons/zgui-primary.png" alt="zgui Jaguar Mascot" width="175">
+</div>
 
 # 🐆 zgui — The Agile Zig GUI Framework
 
