@@ -12,6 +12,16 @@
 
 ---
 
+## DISCLAIMER
+
+⚠️ **EXPERIMENTAL LIBRARY - FOR LAB/PERSONAL USE** ⚠️
+
+This is an experimental library under active development. It is
+intended for research, learning, and personal projects. The API is subject
+to change!
+
+---
+
 **zgui** harnesses the power and agility of the jaguar - nature's most adaptable big cat. Like its mascot, zgui strikes with precision, adapts to any environment (desktop or web), and moves with unmatched performance. Built purely in Zig for developers who demand speed, flexibility, and elegance in their GUI applications.
 
 ---
