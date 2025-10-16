@@ -28,6 +28,26 @@ pub fn build(b: *std.Build) void {
     // to our consumers. We must give it a name because a Zig package can expose
     // multiple modules and consumers will need to be able to specify which
     // module they want to access.
+    const wzl_pkg = b.dependency("wzl", .{ .target = target, .optimize = optimize });
+    const zigzag_pkg = b.dependency("zigzag", .{ .target = target, .optimize = optimize });
+    const zsync_pkg = b.dependency("zsync", .{ .target = target, .optimize = optimize });
+    const zfont_pkg = b.dependency("zfont", .{ .target = target, .optimize = optimize });
+    const gcode_pkg = b.dependency("gcode", .{ .target = target, .optimize = optimize });
+
+    const wzl_mod = wzl_pkg.module("wzl");
+    const zigzag_mod = zigzag_pkg.module("zigzag");
+    const zsync_mod = zsync_pkg.module("zsync");
+    const zfont_mod = zfont_pkg.module("zfont");
+    const gcode_mod = gcode_pkg.module("gcode");
+
+    const shared_imports = [_]std.Build.Module.Import{
+        .{ .name = "wzl", .module = wzl_mod },
+        .{ .name = "zigzag", .module = zigzag_mod },
+        .{ .name = "zsync", .module = zsync_mod },
+        .{ .name = "zfont", .module = zfont_mod },
+        .{ .name = "gcode", .module = gcode_mod },
+    };
+
     const mod = b.addModule("zgui", .{
         // The root source file is the "entry point" of this module. Users of
         // this module will only be able to access public declarations contained
@@ -39,6 +59,7 @@ pub fn build(b: *std.Build) void {
         // Later on we'll use this module as the root module of a test executable
         // which requires us to specify a target.
         .target = target,
+        .imports = &shared_imports,
     });
 
     // Here we define an executable. An executable needs to have a root module
@@ -73,12 +94,12 @@ pub fn build(b: *std.Build) void {
             // List of modules available for import in source files part of the
             // root module.
             .imports = &.{
-                // Here "zgui" is the name you will use in your source code to
-                // import this module (e.g. `@import("zgui")`). The name is
-                // repeated because you are allowed to rename your imports, which
-                // can be extremely useful in case of collisions (which can happen
-                // importing modules from different packages).
                 .{ .name = "zgui", .module = mod },
+                .{ .name = "wzl", .module = wzl_mod },
+                .{ .name = "zigzag", .module = zigzag_mod },
+                .{ .name = "zsync", .module = zsync_mod },
+                .{ .name = "zfont", .module = zfont_mod },
+                .{ .name = "gcode", .module = gcode_mod },
             },
         }),
     });
