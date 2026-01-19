@@ -25,7 +25,7 @@
     .fingerprint = 0xe78160e4d90d9dd, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.16.0-dev.164+bc7955306",
+    .minimum_zig_version = "0.16.0-dev.2193+fc517bd01",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -34,23 +34,23 @@
     .dependencies = .{
         .wzl = .{
             .url = "https://github.com/ghostkellz/wzl/archive/main.tar.gz",
-            .hash = "wzl-0.0.0-027x-JnVBwBQpq2yjgXHh2oHJ2IasugvRTbnvz9zzDTA",
+            .hash = "wzl-0.1.1-027x-IrnBwAPF9CRIEKIXogq8dlRIdhAbO-JHXl5cX4W",
         },
         .zsync = .{
             .url = "https://github.com/ghostkellz/zsync/archive/main.tar.gz",
-            .hash = "zsync-0.6.1-KAuhedFXIADqHJzPi8ZCIVkvWRzaY5L5CXVd7vA9jfLM",
+            .hash = "zsync-0.7.4-KAuheYHjFgAB-W9RvATLcMJyl_1jUtrBZoqXt4eaQN44",
         },
         .zfont = .{
             .url = "https://github.com/ghostkellz/zfont/archive/main.tar.gz",
-            .hash = "zfont-0.1.0-qcMRYK2ICwA3x_9gRT2lotL7ZS4fUA1bRNQi9JKAn8Kw",
+            .hash = "zfont-0.1.3-qcMRYN2ICwAa0LwQJFpbPCV1OTJPKB5zTmRBhit5nxY7",
         },
         .gcode = .{
             .url = "https://github.com/ghostkellz/gcode/archive/main.tar.gz",
-            .hash = "gcode-0.1.0-AWO1LsMKDwDmRZJBAvEZSO_lEbpzF0Yi4V2yCkTRdJVD",
+            .hash = "gcode-0.1.1-AWO1LtsLDwBvpJa45dQeR5MIx32JNRFFLBNUyE_JwEVP",
         },
         .zigzag = .{
             .url = "https://github.com/ghostkellz/zigzag/archive/main.tar.gz",
-            .hash = "zigzag-0.0.0-NmTasBwcCACO7Tya5jQtwxKZCE-bTf6DOOd21ZPXgBAq",
+            .hash = "zigzag-0.1.2-NmTasH6YCAAM4G_Xt1CrP7Hw3mFcwin1ThV2K9cOFJbx",
         },
     },
     .paths = .{

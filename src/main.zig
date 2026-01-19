@@ -1,10 +1,10 @@
 const std = @import("std");
 const zgui = @import("zgui");
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     // Prints to stderr, ignoring potential errors.
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try zgui.bufferedPrint();
+    try zgui.bufferedPrint(init.io);
 }
 
 test "simple test" {

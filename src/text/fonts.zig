@@ -1,4 +1,5 @@
 const std = @import("std");
+const Io = std.Io;
 
 pub const zfont = @import("zfont");
 
@@ -18,15 +19,18 @@ const default_font_env_var = "ZGUI_FONT_PATH";
 const max_font_bytes: usize = 32 * 1024 * 1024;
 
 /// FontManager owns font resources and exposes handles for layout and rendering.
+/// Requires an Io instance for file operations.
 pub const FontManager = struct {
     allocator: std.mem.Allocator,
-    entries: std.ArrayList(FontEntry),
+    io: Io,
+    entries: std.ArrayList(FontEntry) = .{},
     default_font: ?FontHandle = null,
     renderer: ?zfont.GlyphRenderer = null,
 
     pub const LoadError = error{
         FontParseFailed,
-    } || std.mem.Allocator.Error || std.fs.File.OpenError || std.fs.File.ReadError;
+        StreamTooLong,
+    } || std.mem.Allocator.Error || Io.File.OpenError || Io.File.Reader.Error || Io.Reader.LimitedAllocError;
 
     pub const GlyphError = LoadError || zfont.FontError || error{UnknownFontHandle};
 
@@ -40,12 +44,10 @@ pub const FontManager = struct {
         advance_y: f32,
     };
 
-    pub fn init(allocator: std.mem.Allocator) FontManager {
+    pub fn init(allocator: std.mem.Allocator, io: Io) FontManager {
         return .{
             .allocator = allocator,
-            .entries = std.ArrayList(FontEntry).init(allocator),
-            .default_font = null,
-            .renderer = null,
+            .io = io,
         };
     }
 
@@ -57,7 +59,7 @@ pub const FontManager = struct {
             self.allocator.free(entry.path);
             self.allocator.free(entry.data);
         }
-        self.entries.deinit();
+        self.entries.deinit(self.allocator);
         self.default_font = null;
         if (self.renderer) |*renderer| {
             renderer.deinit();
@@ -68,11 +70,13 @@ pub const FontManager = struct {
     pub fn loadFont(self: *FontManager, name: []const u8, path: []const u8) LoadError!FontHandle {
         if (self.findByName(name)) |handle| return handle;
 
-        const file = try openFile(path);
-        defer file.close();
+        const file = try openFile(self.io, path);
+        defer file.close(self.io);
 
+        var read_buffer: [4096]u8 = undefined;
+        var file_reader = file.reader(self.io, &read_buffer);
         var data_owned = true;
-        const data = try file.readToEndAlloc(self.allocator, max_font_bytes);
+        const data = try file_reader.interface.allocRemaining(self.allocator, Io.Limit.limited(max_font_bytes));
         errdefer if (data_owned) self.allocator.free(data);
 
         const font_instance = zfont.Font.init(self.allocator, data) catch |font_err| {
@@ -97,7 +101,7 @@ pub const FontManager = struct {
         errdefer if (path_owned) self.allocator.free(path_copy);
 
         const handle = FontHandle{ .index = self.entries.items.len };
-        try self.entries.append(FontEntry{
+        try self.entries.append(self.allocator, FontEntry{
             .name = name_copy,
             .path = path_copy,
             .data = data,
@@ -124,9 +128,12 @@ pub const FontManager = struct {
             return cached;
         }
 
-        if (std.posix.getenv(default_font_env_var)) |env_ptr| {
-            const env_path = std.mem.span(env_ptr);
-            if (self.tryLoadDefault(env_path)) |handle| return handle;
+        // Check environment variable for custom font path (requires libc)
+        if (comptime @import("builtin").link_libc) {
+            if (std.c.getenv(default_font_env_var)) |env_ptr| {
+                const env_path = std.mem.span(env_ptr);
+                if (self.tryLoadDefault(env_path)) |handle| return handle;
+            }
         }
 
         const candidates = [_][]const u8{
@@ -140,7 +147,7 @@ pub const FontManager = struct {
         };
 
         for (candidates) |candidate| {
-            if (self.tryLoadDefault(candidate)) |handle| return handle;
+            if (try self.tryLoadDefault(candidate)) |handle| return handle;
         }
 
         return error.NoUsableFont;
@@ -221,11 +228,11 @@ pub const FontManager = struct {
     }
 };
 
-fn openFile(path: []const u8) !std.fs.File {
+fn openFile(io: Io, path: []const u8) Io.File.OpenError!Io.File {
     if (std.fs.path.isAbsolute(path)) {
-        return std.fs.openFileAbsolute(path, .{});
+        return Io.Dir.openFileAbsolute(io, path, .{});
     }
-    return std.fs.cwd().openFile(path, .{});
+    return Io.Dir.cwd().openFile(io, path, .{});
 }
 
 test "FontManager ensureRenderer caches instance" {
@@ -233,7 +240,7 @@ test "FontManager ensureRenderer caches instance" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var manager = FontManager.init(allocator);
+    var manager = FontManager.init(allocator, std.testing.io);
     defer manager.deinit();
 
     const renderer_a = manager.ensureRenderer();
@@ -248,7 +255,7 @@ test "FontManager getGlyphImage invalid handle" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var manager = FontManager.init(allocator);
+    var manager = FontManager.init(allocator, std.testing.io);
     defer manager.deinit();
 
     const handle = FontHandle{ .index = 42 };

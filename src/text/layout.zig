@@ -80,9 +80,9 @@ pub const ShapeResult = struct {
     lines: std.ArrayList(LineMetrics),
     metrics: LayoutMetrics,
 
-    pub fn deinit(self: *ShapeResult) void {
-        self.glyphs.deinit();
-        self.lines.deinit();
+    pub fn deinit(self: *ShapeResult, allocator: std.mem.Allocator) void {
+        self.glyphs.deinit(allocator);
+        self.lines.deinit(allocator);
     }
 };
 
@@ -115,11 +115,11 @@ pub const TextLayout = struct {
 
         const base_font = self.font_manager.get(base_handle) orelse return error.UnknownFontHandle;
 
-        var glyphs = std.ArrayList(GlyphPlacement).init(self.allocator);
-        errdefer glyphs.deinit();
+        var glyphs: std.ArrayList(GlyphPlacement) = .empty;
+        errdefer glyphs.deinit(self.allocator);
 
-        var lines = std.ArrayList(LineMetrics).init(self.allocator);
-        errdefer lines.deinit();
+        var lines: std.ArrayList(LineMetrics) = .empty;
+        errdefer lines.deinit(self.allocator);
 
         _ = std.unicode.Utf8View.init(text) catch return error.InvalidUtf8;
 
@@ -127,7 +127,7 @@ pub const TextLayout = struct {
             const ascent = base_font.getAscent(options.size);
             const descent = base_font.getDescent(options.size);
             const line_height = base_font.getLineHeight(options.size);
-            try lines.append(LineMetrics{
+            try lines.append(self.allocator, LineMetrics{
                 .index = 0,
                 .width = 0,
                 .ascent = ascent,
@@ -183,7 +183,7 @@ pub const TextLayout = struct {
             if (line_shape.descent > overall_descent) overall_descent = line_shape.descent;
             total_height += line_shape.height;
 
-            try lines.append(LineMetrics{
+            try lines.append(self.allocator, LineMetrics{
                 .index = line_index,
                 .width = line_shape.width,
                 .ascent = line_shape.ascent,
@@ -240,11 +240,11 @@ pub const TextLayout = struct {
             };
         }
 
-        var clusters = std.ArrayList(Cluster).init(self.allocator);
-        defer clusters.deinit();
+        var clusters: std.ArrayList(Cluster) = .empty;
+        defer clusters.deinit(self.allocator);
 
-        var codepoints = std.ArrayList(u32).init(self.allocator);
-        defer codepoints.deinit();
+        var codepoints: std.ArrayList(u32) = .empty;
+        defer codepoints.deinit(self.allocator);
 
         var grapheme_iter = gcode.GraphemeIterator.init(line);
         while (grapheme_iter.next()) |cluster_bytes| {
@@ -254,18 +254,26 @@ pub const TextLayout = struct {
             const cp_start = codepoints.items.len;
             var cp_iter = gcode.codePointIterator(cluster_bytes);
             while (cp_iter.next()) |info| {
-                try codepoints.append(@intCast(info.code));
+                try codepoints.append(self.allocator, @intCast(info.code));
             }
 
             const cp_len = codepoints.items.len - cp_start;
-            try clusters.append(.{
+            try clusters.append(self.allocator, .{
                 .bytes = cluster_bytes,
                 .cp_start = cp_start,
                 .cp_len = cp_len,
             });
         }
 
-        if (clusters.items.len == 0) return 0;
+        if (clusters.items.len == 0) {
+            return LineShape{
+                .width = 0,
+                .ascent = base_font.getAscent(options.size),
+                .descent = base_font.getDescent(options.size),
+                .height = base_font.getLineHeight(options.size),
+                .direction = options.direction orelse gcode.Direction.LTR,
+            };
+        }
 
         const cp_len_total = codepoints.items.len;
         var cp_scripts = try self.allocator.alloc(gcode.Script, cp_len_total);
@@ -305,18 +313,18 @@ pub const TextLayout = struct {
             try bidi_engine.processText(codepoints.items, base_dir);
         defer self.allocator.free(runs);
 
-        var cluster_order = std.ArrayList(usize).init(self.allocator);
-        defer cluster_order.deinit();
+        var cluster_order: std.ArrayList(usize) = .empty;
+        defer cluster_order.deinit(self.allocator);
 
         for (runs) |run| {
-            var run_clusters = std.ArrayList(usize).init(self.allocator);
-            defer run_clusters.deinit();
+            var run_clusters: std.ArrayList(usize) = .empty;
+            defer run_clusters.deinit(self.allocator);
 
             var prev_cluster: ?usize = null;
             for (run.start..run.end()) |cp_index| {
                 const cluster_idx = cp_to_cluster[cp_index];
                 if (prev_cluster == null or prev_cluster.? != cluster_idx) {
-                    try run_clusters.append(cluster_idx);
+                    try run_clusters.append(self.allocator, cluster_idx);
                     prev_cluster = cluster_idx;
                 }
             }
@@ -327,13 +335,13 @@ pub const TextLayout = struct {
                     i -= 1;
                     const idx = run_clusters.items[i];
                     if (cluster_order.items.len == 0 or cluster_order.items[cluster_order.items.len - 1] != idx) {
-                        try cluster_order.append(idx);
+                        try cluster_order.append(self.allocator, idx);
                     }
                 }
             } else {
                 for (run_clusters.items) |idx| {
                     if (cluster_order.items.len == 0 or cluster_order.items[cluster_order.items.len - 1] != idx) {
-                        try cluster_order.append(idx);
+                        try cluster_order.append(self.allocator, idx);
                     }
                 }
             }
@@ -341,7 +349,7 @@ pub const TextLayout = struct {
 
         if (cluster_order.items.len == 0) {
             for (clusters.items, 0..) |_, idx| {
-                try cluster_order.append(idx);
+                try cluster_order.append(self.allocator, idx);
             }
         }
 
@@ -399,12 +407,11 @@ pub const TextLayout = struct {
                 }
 
                 const advance = font.getAdvanceWidth(codepoint, options.size) catch |err| switch (err) {
-                    error.OutOfMemory => return err,
                     error.GlyphNotFound => continue,
                     else => return err,
                 };
 
-                try glyphs.append(.{
+                try glyphs.append(self.allocator, .{
                     .codepoint = codepoint,
                     .font = handle,
                     .advance = advance,
@@ -460,9 +467,9 @@ pub const TextLayout = struct {
 };
 
 fn clusterSupported(font: *fonts.zfont.Font, codepoints: []const u32, script: gcode.Script) bool {
-    if (mapScript(script)) |mapped| {
-        if (!font.supportsScript(mapped)) return false;
-    }
+    // Note: Script-based font selection is disabled until zfont exports Script enum
+    // from its root module. For now, we only check glyph coverage.
+    _ = script;
 
     for (codepoints) |cp| {
         if (!font.hasGlyph(cp)) return false;
@@ -471,31 +478,9 @@ fn clusterSupported(font: *fonts.zfont.Font, codepoints: []const u32, script: gc
     return true;
 }
 
-fn mapScript(script: gcode.Script) ?fonts.zfont.Font.Script {
-    return switch (script) {
-        .Latin => .latin,
-        .Greek => .greek,
-        .Cyrillic => .cyrillic,
-        .Arabic, .Syriac, .Thaana, .Nko => .arabic,
-        .Hebrew => .hebrew,
-        .Devanagari => .devanagari,
-        .Han => .chinese,
-        .Hiragana, .Katakana => .japanese,
-        .Hangul => .korean,
-        .Common, .Inherited, .Unknown => null,
-        else => null,
-    };
-}
-
 test "Span len computes difference" {
     const span = Span{ .start = 2, .end = 7 };
     try std.testing.expectEqual(@as(usize, 5), span.len());
-}
-
-test "mapScript maps core scripts" {
-    try std.testing.expectEqual(fonts.zfont.Font.Script.latin, mapScript(gcode.Script.Latin).?);
-    try std.testing.expectEqual(fonts.zfont.Font.Script.arabic, mapScript(gcode.Script.Arabic).?);
-    try std.testing.expect(mapScript(gcode.Script.Unknown) == null);
 }
 
 test "TextLayout errors when default font missing entry" {
@@ -503,7 +488,7 @@ test "TextLayout errors when default font missing entry" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var manager = fonts.FontManager.init(allocator);
+    var manager = fonts.FontManager.init(allocator, std.testing.io);
     defer manager.deinit();
     manager.default_font = fonts.FontHandle{ .index = 0 };
 
