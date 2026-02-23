@@ -34,11 +34,11 @@
     .dependencies = .{
         .wzl = .{
             .url = "https://github.com/ghostkellz/wzl/archive/main.tar.gz",
-            .hash = "wzl-0.1.1-027x-IrnBwAPF9CRIEKIXogq8dlRIdhAbO-JHXl5cX4W",
+            .hash = "wzl-0.1.3-027x-OZVCAB3qstpGB8fSqbFWXpQmOPw0qEyzx5eQ9VI",
         },
         .zsync = .{
             .url = "https://github.com/ghostkellz/zsync/archive/main.tar.gz",
-            .hash = "zsync-0.7.4-KAuheYHjFgAB-W9RvATLcMJyl_1jUtrBZoqXt4eaQN44",
+            .hash = "zsync-0.7.5-KAuhedbyFgA-4HLXM_afdk2aM0bQl45kmOKuUvCVl6p0",
         },
         .zfont = .{
             .url = "https://github.com/ghostkellz/zfont/archive/main.tar.gz",
@@ -50,7 +50,11 @@
         },
         .zigzag = .{
             .url = "https://github.com/ghostkellz/zigzag/archive/main.tar.gz",
-            .hash = "zigzag-0.1.2-NmTasH6YCAAM4G_Xt1CrP7Hw3mFcwin1ThV2K9cOFJbx",
+            .hash = "zigzag-0.1.3-NmTasHqZCACCEsKm6NKNETSOmsuZW4lCnYPuHx6GTWc4",
+        },
+        .zquic = .{
+            .url = "https://github.com/ghostkellz/zquic/archive/main.tar.gz",
+            .hash = "zquic-0.9.6-2rPdsy6YEgBJDrdH6coqjutlhvTM2TKXV10leu9w_0Yy",
         },
     },
     .paths = .{
